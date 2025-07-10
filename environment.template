@@ -1,0 +1,119 @@
+# =============================================================================
+# MICROSERVICE EMAIL VERIFICATION - ENVIRONMENT CONFIGURATION TEMPLATE
+# =============================================================================
+# HƯỚNG DẪN SỬ DỤNG:
+# 1. Copy file này thành .env: cp environment.template .env
+# 2. Điền thông tin thực của bạn vào file .env
+# 3. QUAN TRỌNG: Không commit file .env vào Git!
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+SERVER_PORT=8080
+SERVER_HOST=0.0.0.0
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password_here
+REDIS_DB=0
+
+# =============================================================================
+# GMAIL SMTP CONFIGURATION - THAY ĐỔI THÔNG TIN NÀY
+# =============================================================================
+
+# HƯỚNG DẪN LẤY GMAIL APP PASSWORD:
+# 
+# Bước 1: Truy cập Google Account
+# - Vào https://myaccount.google.com/
+# - Đăng nhập bằng tài khoản Gmail của bạn
+#
+# Bước 2: Bật xác minh 2 bước (nếu chưa có)
+# - Bảo mật > Xác minh 2 bước
+# - Làm theo hướng dẫn để bật
+#
+# Bước 3: Tạo App Password
+# - Vào Bảo mật > Mật khẩu ứng dụng
+# - Chọn ứng dụng: Mail
+# - Chọn thiết bị: Khác (tùy chỉnh tên)
+# - Nhập tên: "Fix4Home Email Service"
+# - Nhấn TẠO
+#
+# Bước 4: Sử dụng App Password
+# - Google sẽ hiển thị mật khẩu 16 ký tự
+# - Sao chép và dán vào SMTP_PASSWORD bên dưới
+# - Lưu ý: Không sử dụng mật khẩu Gmail thông thường!
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-16-character-app-password
+SMTP_FROM_NAME=Fix4Home System
+
+# =============================================================================
+# API SECURITY - THAY ĐỔI CÁC API KEYS NÀY
+# =============================================================================
+
+# HƯỚNG DẪN TẠO API KEYS AN TOÀN:
+#
+# 1. Tạo keys mạnh (tối thiểu 20 ký tự)
+# 2. Sử dụng format: system_environment_randomstring
+# 3. Mỗi hệ thống/môi trường nên có key riêng
+# 4. Thay đổi định kỳ để bảo mật
+#
+# VÍ DỤ API KEYS:
+# - fix4home_prod_a8f7d9e3c2b1k4m6n9
+# - mobile_app_x7y2z5w8v1q4r7t0u3
+# - partner_system_j6h9g2f5d8s1a4p7
+# - admin_dashboard_m3n6b9v2c5x8z1l4
+#
+# CÁCH TẠO RANDOM STRING:
+# - Linux/Mac: openssl rand -hex 10
+# - Online: sử dụng password generator
+# - Hoặc tự tạo chuỗi ngẫu nhiên
+
+API_KEYS=fix4home_prod_123abc456def789,mobile_app_xyz789abc123def456,partner_api_ghi345jkl678mno901
+
+# =============================================================================
+# RATE LIMITING CONFIGURATION
+# =============================================================================
+# Giới hạn số lần gửi email để tránh spam
+RATE_LIMIT_EMAIL_PER_HOUR=5
+RATE_LIMIT_IP_PER_HOUR=30
+
+# =============================================================================
+# VERIFICATION CODE CONFIGURATION
+# =============================================================================
+# Cấu hình mã xác thực
+CODE_EXPIRE_MINUTES=30
+CODE_LENGTH=6
+DEFAULT_SYSTEM_NAME=Fix4Home
+
+# =============================================================================
+# PRODUCTION SETTINGS (Tùy chọn)
+# =============================================================================
+# Bỏ comment để chạy ở chế độ production
+# GIN_MODE=release
+
+# =============================================================================
+# NOTES & SECURITY REMINDERS
+# =============================================================================
+#
+# ⚠️  QUAN TRỌNG - BẢO MẬT:
+# - Không bao giờ commit file .env vào Git
+# - Sử dụng Gmail App Password, không phải password thông thường
+# - Tạo API keys mạnh và unique cho mỗi môi trường
+# - Thay đổi API keys định kỳ
+# - Không chia sẻ credentials qua email hoặc chat
+#
+# 📧 TEST EMAIL:
+# Sau khi cấu hình, test bằng cách:
+# 1. Chạy: go run cmd/server/main.go
+# 2. Call API: POST /generate với x-api-key header
+#
+# 🔧 TROUBLESHOOTING:
+# - Nếu SMTP failed: kiểm tra App Password và 2FA
+# - Nếu Unauthorized: kiểm tra API key trong header
+# - Nếu Rate limit: đợi 1 giờ hoặc clear Redis cache 
