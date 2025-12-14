@@ -3,21 +3,13 @@ version: '3.8'
 services:
   # Redis service
   redis:
-    image: redis:7-alpine
-    container_name: mrs_sendemail_redis
-    restart: unless-stopped
+    image: redis:7
+    container_name: sendmail_db
     ports:
       - "6379:6379"
-    command: redis-server --requirepass your_redis_password
+    command: ["redis-server", "--requirepass", "mypassword"]
     volumes:
-      - redis_data:/data
-    networks:
-      - sendemail_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "your_redis_password", "ping"]
-      interval: 30s
-      timeout: 3s
-      retries: 5
+      - ./redis_data:/data
 
   # Main microservice
   sendemail_service:
@@ -25,18 +17,17 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mrs_sendemail_service
-    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8200:8200"
     environment:
       # Server config
-      SERVER_PORT: 8080
+      SERVER_PORT: 8200
       SERVER_HOST: 0.0.0.0
       
       # Redis config
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: your_redis_password
+      REDIS_PASSWORD: mypassword
       REDIS_DB: 0
       
       # Gmail SMTP config (cần thay đổi)
@@ -58,18 +49,7 @@ services:
       CODE_LENGTH: 6
       DEFAULT_SYSTEM_NAME: Fix4Home
     depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - sendemail_network
+      - redis
     volumes:
       # Mount .env file nếu có
-      - ./.env:/root/.env:ro
-
-networks:
-  sendemail_network:
-    driver: bridge
-
-volumes:
-  redis_data:
-    driver: local 
+      - ./.env:/root/.env:ro 

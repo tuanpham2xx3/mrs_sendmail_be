@@ -9,12 +9,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Redis    RedisConfig
-	SMTP     SMTPConfig
-	Security SecurityConfig
+	Server    ServerConfig
+	Redis     RedisConfig
+	SMTP      SMTPConfig
+	Security  SecurityConfig
 	RateLimit RateLimitConfig
-	Code     CodeConfig
+	Code      CodeConfig
 }
 
 type ServerConfig struct {
@@ -47,8 +47,8 @@ type RateLimitConfig struct {
 }
 
 type CodeConfig struct {
-	ExpireMinutes   int
-	Length          int
+	ExpireMinutes     int
+	Length            int
 	DefaultSystemName string
 }
 
@@ -58,7 +58,7 @@ func Load() (*Config, error) {
 
 	config := &Config{
 		Server: ServerConfig{
-			Port: getEnv("SERVER_PORT", "8080"),
+			Port: getEnv("SERVER_PORT", "8200"),
 			Host: getEnv("SERVER_HOST", "0.0.0.0"),
 		},
 		Redis: RedisConfig{
@@ -112,4 +112,4 @@ func getEnvAsSlice(key string, defaultValue []string) []string {
 		return strings.Split(value, ",")
 	}
 	return defaultValue
-} 
+}

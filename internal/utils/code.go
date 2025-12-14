@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"strings"
+	"github.com/google/uuid"
 )
 
 // GenerateVerificationCode sinh mã xác thực ngẫu nhiên
@@ -52,4 +53,25 @@ func GetClientIP(remoteAddr, xForwardedFor, xRealIP string) string {
 	}
 	
 	return "unknown"
+}
+
+// GenerateActivationToken sinh UUID token cho activation
+func GenerateActivationToken() (string, error) {
+	token, err := uuid.NewRandom()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate UUID token: %w", err)
+	}
+	return token.String(), nil
+}
+
+// GenerateActivationURL tạo URL activation từ base URL và token
+func GenerateActivationURL(baseURL, action, token string) string {
+	switch action {
+	case "registration":
+		return fmt.Sprintf("%s/activate?token=%s", strings.TrimRight(baseURL, "/"), token)
+	case "password_reset":
+		return fmt.Sprintf("%s/reset-password?token=%s", strings.TrimRight(baseURL, "/"), token)
+	default:
+		return fmt.Sprintf("%s/verify?token=%s", strings.TrimRight(baseURL, "/"), token)
+	}
 } 

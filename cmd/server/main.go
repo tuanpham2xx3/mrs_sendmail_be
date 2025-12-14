@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -25,7 +26,8 @@ func main() {
 
 	// Test connections at startup
 	log.Println("Testing service connections...")
-	if err := redisService.Ping(nil); err != nil {
+	ctx := context.Background()
+	if err := redisService.Ping(ctx); err != nil {
 		log.Printf("Warning: Redis connection failed: %v", err)
 	} else {
 		log.Println("✓ Redis connection successful")
@@ -41,6 +43,7 @@ func main() {
 	healthHandler := handlers.NewHealthHandler(redisService, smtpService)
 	generateHandler := handlers.NewGenerateHandler(cfg, redisService, smtpService)
 	verifyHandler := handlers.NewVerifyHandler(redisService)
+	activationHandler := handlers.NewActivationHandler(cfg, redisService, smtpService)
 
 	// Setup Gin router
 	if gin.Mode() == gin.ReleaseMode {
@@ -74,22 +77,37 @@ func main() {
 	protected := router.Group("/")
 	protected.Use(middleware.APIKeyAuth(cfg))
 	{
-		// Generate endpoint với rate limiting
+		// Legacy endpoints - Generate endpoint với rate limiting
 		generateGroup := protected.Group("/")
 		generateGroup.Use(middleware.RateLimit(redisService))
 		generateGroup.Use(middleware.EmailRateLimit(redisService))
 		generateGroup.POST("/generate", generateHandler.Generate)
 
-		// Verify endpoint (chỉ cần API key, không cần rate limiting)
+		// Legacy endpoints - Verify endpoint (chỉ cần API key, không cần rate limiting)
 		protected.POST("/verify", verifyHandler.Verify)
+
+		// New activation endpoints với rate limiting
+		activationGroup := protected.Group("/")
+		activationGroup.Use(middleware.RateLimit(redisService))
+		activationGroup.Use(middleware.EmailRateLimit(redisService))
+		activationGroup.POST("/generate-activation", activationHandler.GenerateActivation)
+		activationGroup.POST("/resend-activation", activationHandler.ResendActivation)
+
+		// Verify activation endpoint (chỉ cần API key, không cần rate limiting)
+		protected.POST("/verify-activation", activationHandler.VerifyActivation)
 	}
 
 	// Start server
 	address := cfg.Server.Host + ":" + cfg.Server.Port
 	log.Printf("Starting server on %s", address)
 	log.Printf("Health check: GET http://%s/health", address)
+	log.Printf("=== Legacy Endpoints ===")
 	log.Printf("Generate code: POST http://%s/generate", address)
 	log.Printf("Verify code: POST http://%s/verify", address)
+	log.Printf("=== New Activation Endpoints ===")
+	log.Printf("Generate activation: POST http://%s/generate-activation", address)
+	log.Printf("Verify activation: POST http://%s/verify-activation", address)
+	log.Printf("Resend activation: POST http://%s/resend-activation", address)
 
 	if err := router.Run(address); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

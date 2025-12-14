@@ -49,21 +49,46 @@ func RateLimit(redisService *services.RedisService) gin.HandlerFunc {
 }
 
 // EmailRateLimit middleware để kiểm tra rate limiting theo email
+// Hỗ trợ cả GenerateRequest (legacy) và GenerateActivationRequest (new)
 func EmailRateLimit(redisService *services.RedisService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Lấy email từ request body
-		var req models.GenerateRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{
-				Error:   "Bad Request",
-				Message: err.Error(),
-			})
-			c.Abort()
-			return
+		var email string
+		var requestBody interface{}
+		
+		// Kiểm tra xem đây có phải là activation endpoint không
+		isActivationEndpoint := c.Request.URL.Path == "/generate-activation" || 
+		                        c.Request.URL.Path == "/resend-activation"
+		
+		if isActivationEndpoint {
+			// Bind vào GenerateActivationRequest cho activation endpoints
+			var req models.GenerateActivationRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Error:   "Bad Request",
+					Message: err.Error(),
+				})
+				c.Abort()
+				return
+			}
+			email = req.Email
+			requestBody = req
+		} else {
+			// Bind vào GenerateRequest cho legacy endpoints
+			var req models.GenerateRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Error:   "Bad Request",
+					Message: err.Error(),
+				})
+				c.Abort()
+				return
+			}
+			email = req.Email
+			requestBody = req
 		}
 
 		// Kiểm tra rate limit theo email
-		emailAllowed, err := redisService.CheckEmailRateLimit(c.Request.Context(), req.Email)
+		emailAllowed, err := redisService.CheckEmailRateLimit(c.Request.Context(), email)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "Internal Server Error",
@@ -75,17 +100,17 @@ func EmailRateLimit(redisService *services.RedisService) gin.HandlerFunc {
 
 		if !emailAllowed {
 			// Lấy số lần đã gửi để thông báo chi tiết
-			count, _ := redisService.GetEmailRateLimitCount(c.Request.Context(), req.Email)
+			count, _ := redisService.GetEmailRateLimitCount(c.Request.Context(), email)
 			c.JSON(http.StatusTooManyRequests, models.ErrorResponse{
 				Error:   "Rate Limit Exceeded",
-				Message: fmt.Sprintf("Email rate limit exceeded. Current: %d requests per hour for %s", count, req.Email),
+				Message: fmt.Sprintf("Email rate limit exceeded. Current: %d requests per hour for %s", count, email),
 			})
 			c.Abort()
 			return
 		}
 
 		// Lưu request body vào context để tránh bind lại
-		c.Set("request_body", req)
+		c.Set("request_body", requestBody)
 		c.Next()
 	}
 } 

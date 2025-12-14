@@ -16,6 +16,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Ensure go.mod/go.sum are up to date (generate missing sums)
+RUN go mod tidy
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
 
@@ -35,11 +38,11 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/config.example .
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8200
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8200/health || exit 1
 
 # Run the application
 CMD ["./main"] 

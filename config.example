@@ -1,11 +1,11 @@
 # Server Configuration
-SERVER_PORT=8080
+SERVER_PORT=8200
 SERVER_HOST=0.0.0.0
 
 # Redis Configuration
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=
+REDIS_PASSWORD=mypassword
 REDIS_DB=0
 
 # Gmail SMTP Configuration

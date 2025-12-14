@@ -48,8 +48,8 @@ REDIS_DB=0
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-16-character-app-password
+SMTP_USERNAME=no-reply@mnosngothinham.io.vn
+SMTP_PASSWORD=ncfwywujogxwruuy
 SMTP_FROM_NAME=Fix4Home System
 
 # =============================================================================

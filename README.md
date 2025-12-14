@@ -95,7 +95,7 @@ go run cmd/server/main.go
 
 ### Base URL
 ```
-http://localhost:8080
+http://localhost:8200
 ```
 
 ### Headers Required
@@ -210,10 +210,10 @@ Kiểm tra trạng thái Redis và SMTP connection.
 
 ```bash
 # Health check
-curl -X GET http://localhost:8080/health
+curl -X GET http://localhost:8200/health
 
 # Generate code
-curl -X POST http://localhost:8080/generate \
+curl -X POST http://localhost:8200/generate \
   -H "Content-Type: application/json" \
   -H "x-api-key: fix4home_secret_key" \
   -d '{
@@ -222,7 +222,7 @@ curl -X POST http://localhost:8080/generate \
   }'
 
 # Verify code
-curl -X POST http://localhost:8080/verify \
+curl -X POST http://localhost:8200/verify \
   -H "Content-Type: application/json" \
   -H "x-api-key: fix4home_secret_key" \
   -d '{
@@ -234,7 +234,7 @@ curl -X POST http://localhost:8080/verify \
 ### Sử dụng Postman
 
 Import collection với các endpoint trên và thêm:
-- Base URL: `http://localhost:8080`
+- Base URL: `http://localhost:8200`
 - Header: `x-api-key: your-api-key`
 
 ## 🐳 Production Deployment
@@ -264,7 +264,7 @@ server {
     ssl_certificate_key /path/to/key.pem;
     
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8200;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

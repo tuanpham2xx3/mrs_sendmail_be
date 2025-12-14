@@ -17,11 +17,17 @@ type RedisService struct {
 }
 
 func NewRedisService(cfg *config.Config) *RedisService {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port),
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	})
+	opts := &redis.Options{
+		Addr: fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port),
+		DB:   cfg.Redis.DB,
+	}
+	
+	// Chỉ set password nếu có giá trị (không rỗng)
+	if cfg.Redis.Password != "" {
+		opts.Password = cfg.Redis.Password
+	}
+	
+	rdb := redis.NewClient(opts)
 
 	return &RedisService{
 		client: rdb,
@@ -153,4 +159,127 @@ func (r *RedisService) GetIPRateLimitCount(ctx context.Context, ip string) (int,
 		return 0, nil
 	}
 	return count, err
+}
+
+// ===== ACTIVATION TOKEN METHODS =====
+
+// StoreActivationToken lưu activation token vào Redis
+func (r *RedisService) StoreActivationToken(ctx context.Context, token *models.ActivationToken) error {
+	data, err := json.Marshal(token)
+	if err != nil {
+		return fmt.Errorf("failed to marshal activation token: %w", err)
+	}
+
+	// Store by token for verification
+	tokenKey := fmt.Sprintf("activation:token:%s", token.Token)
+	
+	// Store by email+action for resend logic
+	emailKey := fmt.Sprintf("activation:email:%s:%s", token.Email, token.Action)
+	
+	// 30 minutes expiration
+	expiration := 30 * time.Minute
+
+	pipe := r.client.Pipeline()
+	pipe.Set(ctx, tokenKey, data, expiration)
+	pipe.Set(ctx, emailKey, token.Token, expiration) // Store token reference
+	
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+// GetActivationToken lấy activation token từ Redis bằng token
+func (r *RedisService) GetActivationToken(ctx context.Context, token string) (*models.ActivationToken, error) {
+	key := fmt.Sprintf("activation:token:%s", token)
+	
+	data, err := r.client.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, fmt.Errorf("activation token not found or expired")
+		}
+		return nil, fmt.Errorf("failed to get activation token: %w", err)
+	}
+
+	var activationToken models.ActivationToken
+	if err := json.Unmarshal([]byte(data), &activationToken); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal activation token: %w", err)
+	}
+
+	return &activationToken, nil
+}
+
+// GetActivationTokenByEmail lấy activation token từ Redis bằng email và action
+func (r *RedisService) GetActivationTokenByEmail(ctx context.Context, email, action string) (*models.ActivationToken, error) {
+	emailKey := fmt.Sprintf("activation:email:%s:%s", email, action)
+	
+	// Get token reference
+	tokenRef, err := r.client.Get(ctx, emailKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, fmt.Errorf("no activation token found for email and action")
+		}
+		return nil, fmt.Errorf("failed to get token reference: %w", err)
+	}
+
+	// Get actual token data
+	return r.GetActivationToken(ctx, tokenRef)
+}
+
+// UpdateActivationToken cập nhật activation token (cho resend logic)
+func (r *RedisService) UpdateActivationToken(ctx context.Context, token *models.ActivationToken) error {
+	data, err := json.Marshal(token)
+	if err != nil {
+		return fmt.Errorf("failed to marshal activation token: %w", err)
+	}
+
+	tokenKey := fmt.Sprintf("activation:token:%s", token.Token)
+	
+	// Calculate remaining TTL
+	ttl, err := r.client.TTL(ctx, tokenKey).Result()
+	if err != nil {
+		return fmt.Errorf("failed to get TTL: %w", err)
+	}
+	
+	if ttl <= 0 {
+		return fmt.Errorf("token has expired")
+	}
+
+	// Update with remaining TTL
+	return r.client.Set(ctx, tokenKey, data, ttl).Err()
+}
+
+// DeleteActivationToken xóa activation token từ Redis
+func (r *RedisService) DeleteActivationToken(ctx context.Context, token *models.ActivationToken) error {
+	tokenKey := fmt.Sprintf("activation:token:%s", token.Token)
+	emailKey := fmt.Sprintf("activation:email:%s:%s", token.Email, token.Action)
+	
+	pipe := r.client.Pipeline()
+	pipe.Del(ctx, tokenKey)
+	pipe.Del(ctx, emailKey)
+	
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// CheckActivationResendLimit kiểm tra xem có thể gửi lại activation email không
+func (r *RedisService) CheckActivationResendLimit(ctx context.Context, email, action string) (bool, int64, error) {
+	token, err := r.GetActivationTokenByEmail(ctx, email, action)
+	if err != nil {
+		// No existing token, can send
+		return true, 0, nil
+	}
+
+	now := time.Now().Unix()
+	
+	// Check if max sends reached (3 times)
+	if token.SendCount >= 3 {
+		return false, 0, fmt.Errorf("maximum resend limit reached")
+	}
+	
+	// Check if 60 seconds have passed since last send
+	if now-token.LastSentAt < 60 {
+		nextAllowedTime := token.LastSentAt + 60
+		return false, nextAllowedTime, fmt.Errorf("must wait 60 seconds between resends")
+	}
+	
+	return true, 0, nil
 } 
