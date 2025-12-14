@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"mrs_sendemail_be/internal/models"
 	"mrs_sendemail_be/internal/services"
 	"mrs_sendemail_be/internal/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 // RateLimit middleware để kiểm tra rate limiting
@@ -54,14 +55,26 @@ func EmailRateLimit(redisService *services.RedisService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var email string
 		var requestBody interface{}
-		
-		// Kiểm tra xem đây có phải là activation endpoint không
-		isActivationEndpoint := c.Request.URL.Path == "/generate-activation" || 
-		                        c.Request.URL.Path == "/resend-activation"
-		
-		if isActivationEndpoint {
-			// Bind vào GenerateActivationRequest cho activation endpoints
+
+		// Kiểm tra endpoint để bind đúng struct
+		path := c.Request.URL.Path
+
+		if path == "/generate-activation" {
+			// Bind vào GenerateActivationRequest cho generate endpoint
 			var req models.GenerateActivationRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Error:   "Bad Request",
+					Message: err.Error(),
+				})
+				c.Abort()
+				return
+			}
+			email = req.Email
+			requestBody = req
+		} else if path == "/resend-activation" {
+			// Bind vào ResendActivationRequest cho resend endpoint
+			var req models.ResendActivationRequest
 			if err := c.ShouldBindJSON(&req); err != nil {
 				c.JSON(http.StatusBadRequest, models.ErrorResponse{
 					Error:   "Bad Request",
@@ -113,4 +126,4 @@ func EmailRateLimit(redisService *services.RedisService) gin.HandlerFunc {
 		c.Set("request_body", requestBody)
 		c.Next()
 	}
-} 
+}

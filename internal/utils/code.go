@@ -6,13 +6,14 @@ import (
 	"math/big"
 	"net"
 	"strings"
+
 	"github.com/google/uuid"
 )
 
 // GenerateVerificationCode sinh mã xác thực ngẫu nhiên
 func GenerateVerificationCode(length int) (string, error) {
 	const digits = "0123456789"
-	
+
 	code := make([]byte, length)
 	for i := range code {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
@@ -21,7 +22,7 @@ func GenerateVerificationCode(length int) (string, error) {
 		}
 		code[i] = digits[num.Int64()]
 	}
-	
+
 	return string(code), nil
 }
 
@@ -37,12 +38,12 @@ func GetClientIP(remoteAddr, xForwardedFor, xRealIP string) string {
 			}
 		}
 	}
-	
+
 	// Kiểm tra X-Real-IP header
 	if xRealIP != "" && xRealIP != "unknown" {
 		return xRealIP
 	}
-	
+
 	// Fallback to RemoteAddr
 	if remoteAddr != "" {
 		host, _, err := net.SplitHostPort(remoteAddr)
@@ -51,7 +52,7 @@ func GetClientIP(remoteAddr, xForwardedFor, xRealIP string) string {
 		}
 		return host
 	}
-	
+
 	return "unknown"
 }
 
@@ -68,10 +69,10 @@ func GenerateActivationToken() (string, error) {
 func GenerateActivationURL(baseURL, action, token string) string {
 	switch action {
 	case "registration":
-		return fmt.Sprintf("%s/activate?token=%s", strings.TrimRight(baseURL, "/"), token)
+		return fmt.Sprintf("%s/activate.html?token=%s", strings.TrimRight(baseURL, "/"), token)
 	case "password_reset":
-		return fmt.Sprintf("%s/reset-password?token=%s", strings.TrimRight(baseURL, "/"), token)
+		return fmt.Sprintf("%s/reset-password.html?token=%s", strings.TrimRight(baseURL, "/"), token)
 	default:
-		return fmt.Sprintf("%s/verify?token=%s", strings.TrimRight(baseURL, "/"), token)
+		return fmt.Sprintf("%s/verify.html?token=%s", strings.TrimRight(baseURL, "/"), token)
 	}
-} 
+}

@@ -250,14 +250,22 @@ func (h *ActivationHandler) VerifyActivation(c *gin.Context) {
 
 // ResendActivation gửi lại activation email
 func (h *ActivationHandler) ResendActivation(c *gin.Context) {
-	var req models.ResendActivationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "Bad Request",
-			Message: err.Error(),
-		})
-		return
+	// Lấy request từ context (đã được validate bởi middleware)
+	reqBody, exists := c.Get("request_body")
+	if !exists {
+		// Fallback: bind lại nếu middleware không lưu
+		var req models.ResendActivationRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error:   "Bad Request",
+				Message: err.Error(),
+			})
+			return
+		}
+		reqBody = req
 	}
+
+	req := reqBody.(models.ResendActivationRequest)
 
 	// Kiểm tra xem có thể gửi lại không
 	canResend, nextResendAt, err := h.redisService.CheckActivationResendLimit(c.Request.Context(), req.Email, req.Action)
